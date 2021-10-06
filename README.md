@@ -8,7 +8,4 @@ https://somjang.tistory.com/entry/PythonUbuntu%EC%97%90-Python-37-%EC%84%A4%EC%B
 우분투 터미널로 파이참 설치
 https://davelogs.tistory.com/m/57
 
-아나콘다 설치
-https://thinmug.tistory.com/51
-
 쿠다나 cudnn은 물어보기
