@@ -36,6 +36,24 @@ def relu() :
 def dropout(rate) :
     return tf.keras.layers.Dropout(rate)
 
+def loss_fn(model, images, labels):
+    logits = model(images, training=True)
+    loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(logits=logits, labels=labels))
+    return loss
+
+def accuracy_fn(model, images, labels):
+    logits = model(images, training=True)
+    prediction = tf.equal(tf.argmax(logits, -1), tf.argmax(labels, -1))
+    accuracy = tf.reduce_mean(tf.cast(prediction, tf.float32))
+    return accuracy
+
+def grad(model, images, labels):
+    with tf.GradientTape() as tape:
+        loss = loss_fn(model, images, labels)
+    return tape.gradient(loss, model.variables)
+
+
+
 class create_model(tf.keras.Model) :
     def __init__(self, label_dim):
         super(create_model, self).__init__()
@@ -70,4 +88,3 @@ class create_model(tf.keras.Model) :
         model.add(dense(label_dim, weight_init))
 
         return
-
