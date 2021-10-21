@@ -1,56 +1,176 @@
-from keras.models import Sequential
-from keras.layers import Conv2D
-from keras.layers import MaxPooling2D
-from keras.layers import Flatten
-from keras.layers import Dense
-from keras_preprocessing.image import ImageDataGenerator
+import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras import utils
+from tensorflow.keras import layers
+from tensorflow.keras import datasets
+from tensorflow.keras.callbacks import EarlyStopping
+from tensorflow.keras.layers import Dense, Dropout, Flatten, Conv2D, MaxPooling2D
+
 import numpy as np
-from keras.preprocessing import image
+import matplotlib.pyplot as plt
 
-classifier = Sequential()
+import os
+import tensorflow as tf
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+hallo = tf.constant('why?' )
+print(hallo)
 
-classifier.add(Conv2D(32, (3, 3), input_shape=(64, 64, 3), activation='relu'))
-classifier.add(MaxPooling2D(pool_size=(2,2)))
-classifier.add(Flatten())
 
-# NN 레이어 구현
-# 인풋, 아웃풋 사이에 히든 레이어 둠
-classifier(Dense(units=128, activation='relu'))
+def plot_image(i, predictions_array, true_label, img):
+    predictions_array, true_label, img = predictions_array[i], true_label[i], img[i]
+    plt.grid(False)
+    plt.xticks([])
+    plt.yticks([])
 
-# 이진 분류 문제 -> 노드가 하나인 출력 레이어 구현
-# 시그모이드 활성화 함수 사용
-classifier.add(Dense(units=1, activation='sigmoid'))
-# 옵티마이저: 경사하강 알고리즘 선택, 로스함수와 성능 매트릭 파라미터 각각 설정
-classifier.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+    plt.imshow(img, cmap=plt.cm.binary)
 
-# keras.preprocessing 라이브러리 사용, 이미지 데이터 증폭
-# 이미지의 레이블은 디렉터리 명 따름
-# 'cats 이름 폴더 안에 있는 모든 이미지가 고양이로 학습됨..(이해 안 감)
-train_datagen = ImageDataGenerator(rescale = 1./255
-                                 , shear_range = 0.2
-                                 , zoom_range=0.2
-                                 , horizontal_flip=True)
-test_datagen = ImageDataGenerator(rescale=1./255)
-training_set = train_datagen.flow_from_directory('training_set', target_size=(64, 64)
-                                                               , batch_size=32
-                                                               , class_mode='binary')
+    predicted_label = np.argmax(predictions_array)
+    if predicted_label == np.argmax(true_label):
+        color = 'blue'
+    else:
+        color = 'red'
 
-test_set = test_datagen.flow_from_directory('test_set'
-                                           , target_size=(64, 64)
-                                           , batch_size=32
-                                           , class_mode='binary')
-# steps_per_epoch: 훈련 횟수
-# epochs: 모델을 학습시키는 단위
-# 모든 데이터가 한번 훈련에 사용되면 한 epoch가 완료되었다고 함
-# 모델 훈련은 하나 이상의 epoch가 실행되어야 함
-# 이 경우 25번 실행
-classifier.fit_generator(training_set
-                       , steps_per_epoch=8000
-                       , epochs=25
-                       , validation_data=test_set
-                       , validation_steps=2000)
+    plt.xlabel("{} {:2.0f}% ({})".format(class_names[predicted_label]
+                                       , 100*np.max(predictions_array)
+                                       , class_names[np.argmax(true_label)])
+                                       , color=color)
 
-test_image = image.load_img('..\\pic\\cat.jpg', target_size=(64, 64))
-test_image = image.img_to_array(test_image)
-test_image = np.expand_dims(test_image, axis=0)
-# 참조; https://www.blog.spiderkim.com/post/%EB%94%A5%EB%9F%AC%EB%8B%9D-cnn-convolutional-neural-network-%EC%9D%84-%EC%9D%B4%EC%9A%A9%ED%95%9C-%EA%B0%84%EB%8B%A8%ED%95%9C-%EC%9D%B4%EB%AF%B8%EC%A7%80-%EB%B6%84%EB%A5%98-%EC%98%88%EC%A0%9C
+def plot_value_array(i, predictions_array, true_label):
+    predictions_array, true_label = predictions_array[i], true_label[i]
+    plt.grid(False)
+    plt.xticks([])
+    plt.yticks([])
+    thisplot = plt.bar(range(10), predictions_array, color="#777777")
+    plt.ylim([0, 1])
+    predicted_label = np.argmax(predictions_array)
+
+    thisplot[predicted_label].set_color('red')
+    thisplot[np.argmax(true_label)].set_color('blue')
+
+
+cifar_mnist = datasets.cifar10
+
+(train_images, train_labels), (test_images, test_labels) = cifar_mnist.load_data()
+
+class_names = [
+      'Airplane'
+    , 'Car'
+    , 'Birds'
+    , 'Cat'
+    , 'Deer'
+    , 'Dog'
+    , 'Frog'
+    , 'Horse'
+    , 'Ship'
+    , 'Truck'
+]
+
+plt.figure(figsize=(10, 10))
+for i in range(25):
+    plt.subplot(5, 5, i+1)
+    plt.xticks([])
+    plt.yticks([])
+    plt.grid(False)
+    plt.imshow(train_images[i], cmap=plt.cm.binary)
+    plt.xlabel(class_names[train_labels[i][0]])
+plt.show()
+
+## 데이터 선처리
+batch_size = 64
+num_classes = 10
+epochs = 35
+
+# 왜 이렇게 했을까?
+train_images = train_images.astype('float32')
+train_images = train_images / 255
+
+test_images = test_images.astype('float32')
+test_images = test_images / 255
+
+train_labels = utils.to_categorical(train_labels, num_classes)
+test_labels = utils.to_categorical(test_labels, num_classes)
+
+## 모델 구성
+model = keras.Sequential([
+    Conv2D(32
+        , kernel_size=(3, 3)
+        , padding='same'
+        , input_shape=train_images.shape[1:]
+        , activation=tf.nn.relu),
+    MaxPooling2D(pool_size=(2, 2)),
+    Dropout(0.25),
+
+    Conv2D(64
+         , kernel_size=(3, 3)
+         , padding='same'
+         , activation=tf.nn.relu),
+    MaxPooling2D(pool_size=(2, 2)),
+    Dropout(0.25),
+
+    Flatten(),
+    Dense(64, activation=tf.nn.relu),
+    Dropout(0.25),
+    Dense(num_classes, activation=tf.nn.softmax)
+])
+
+## 생성된 모델 컴파일
+model.compile(
+    loss='categorical_crossentropy',
+    optimizer='adam',
+    metrics=['accuracy']
+)
+
+## 모델 훈련
+# Overfitting 방지 위해 설정
+early_stopping = EarlyStopping(monitor='val_loss', patience=10)
+
+history = model.fit(
+    train_images, train_labels,
+    epochs=epochs,
+    validation_data=(test_images, test_labels),
+    shuffle=True,
+    callbacks=[early_stopping]
+)
+
+## 평가
+loss, acc = model.evaluate(test_images, test_labels)
+print("\nLoss: {}. Acc: {}".format(loss, acc))
+
+def plt_show_loss(history):
+    plt.plot(history.history['loss'])
+    plt.plot(history.history['val_loss'])
+    plt.title('Model Loss')
+    plt.ylabel('Loss')
+    plt.xlabel('Epoch')
+    plt.legend(['Train', 'Test'], loc=0)
+
+def plt_show_acc(history):
+    for hist in history:
+        print(hist)
+
+    # plt.plot(history.history['acc'])
+    # plt.plot(history.history['val_acc'])
+    # plt.title('Model accuracy')
+    # plt.ylabel('Accuracy')
+    # plt.xlabel('Epoch')
+    # plt.legend(['Train', 'Test'], loc=0)
+
+plt_show_loss(history)
+plt.show()
+
+plt_show_acc(history)
+plt.show()
+
+# 예측
+predictions = model.predict(test_images)
+
+num_rows = 5
+num_cols = 3
+num_images = num_rows * num_cols
+plt.figure(figsize=(2*2*num_cols, 2*num_rows))
+for i in range(num_images):
+    plt.subplot(num_rows, 2*num_cols, 2*i+1)
+    plot_image(i, predictions, test_labels, test_images)
+    plt.subplot(num_rows, 2*num_cols, 2*i +2)
+    plot_value_array(i, predictions, test_labels)
+plt.show()
