@@ -184,3 +184,4 @@ for i in range(n_learn):
         print("Error_fake:", error_record[i][0], "Acc fake:", acc_record[i][0])
         print("Error_real:", error_record[i][1], "Acc_reaL:", acc_record[i][1])
         generate_images(i)
+
